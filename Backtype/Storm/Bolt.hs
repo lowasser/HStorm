@@ -19,12 +19,13 @@ data StreamGrouping =
   | NoneGrouping
   | LocalGrouping
 
-data Bolt = Bolt {
+data Bolt = forall s . Bolt {
   boltName :: String,
   inputStreams :: [(AnyDyn Stream, StreamGrouping)],
   outputStreams :: [AnyDyn Stream],
   tearDown :: IO (),
-  executeOnTuple :: InTuple DynamicTuple -> BoltM (),
+  initTaskState :: s,
+  executeOnTuple :: s -> InTuple DynamicTuple -> BoltM s,
   parHint :: Int}
 
 newtype BoltM a = BoltM {runBoltM :: 
@@ -54,21 +55,22 @@ ackTuple tup = BoltM $ \ _ ackFn _ -> ackFn (Dyn tup)
 failTuple :: StormTuple a => InTuple a -> BoltM ()
 failTuple tup = BoltM $ \ _ _ failFn -> failFn (Dyn tup)
 
-data BoltRule where
-  Rule :: StormTuple a => (InTuple a -> BoltM ()) -> BoltRule
+data BoltRule s where
+  Rule :: StormTuple a => (s -> InTuple a -> BoltM s) -> BoltRule s
 
-mkBolt :: String -> [BoltRule] -> Bolt
-mkBolt boltName rules = Bolt {
+mkBolt :: String -> s -> [BoltRule s] -> Bolt
+mkBolt boltName initTaskState rules = Bolt {
   boltName,
   inputStreams = [],
   outputStreams = [],
   parHint = 1,
   tearDown = return (),
+  initTaskState,
   executeOnTuple}
-  where executeOnTuple InTuple{..} = go rules where
+  where executeOnTuple state InTuple{..} = go rules where
 	  go (Rule rule:rs) = case fromDynamicTuple inContents of
 	    Nothing	-> go rs
-	    Just x	-> rule InTuple{inContents = x, ..}
+	    Just x	-> rule state InTuple{inContents = x, ..}
 	  go [] = liftIO $ printf "No rules match tuple %d, discarding.\n"
 
 infixl 1 `withInput`

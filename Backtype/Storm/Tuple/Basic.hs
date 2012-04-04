@@ -1,7 +1,9 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 module Backtype.Storm.Tuple.Basic where
 
 import Data.ByteString (ByteString)
-import Data.Text (Text)
+import Data.Text (Text, pack, unpack)
+import Data.Char
 
 import Backtype.Storm.Tuple
 
@@ -31,6 +33,17 @@ instance TupleComponent Text where
   match _ = Nothing
   cons = StringCons
 
+instance TupleComponent String where
+  match (StringCons txt tup) = Just (unpack txt, tup)
+  match _ = Nothing
+  cons = StringCons . pack
+
+instance TupleComponent Char where
+  match tup = do
+    (i, tup') <- match tup
+    return (chr i, tup')
+  cons = cons . ord
+
 instance StormTuple () where
   fromDynamicTuple EmptyTuple = Just ()
   fromDynamicTuple _ = Nothing
@@ -42,6 +55,18 @@ instance StormTuple Int where
     return i
   toDynamicTuple x = x `cons` EmptyTuple
 
+instance StormTuple Char where
+  fromDynamicTuple tup = do
+    (i, EmptyTuple) <- match tup
+    return i
+  toDynamicTuple x = x `cons` EmptyTuple
+
+instance StormTuple String where
+  fromDynamicTuple tup = do
+    (i, EmptyTuple) <- match tup
+    return i
+  toDynamicTuple x = x `cons` EmptyTuple
+  
 instance StormTuple Double where
   fromDynamicTuple tup = do
     (i, EmptyTuple) <- match tup

@@ -101,10 +101,9 @@ runBoltTask Bolt{..} emitFn = do
 	      emitFn taskId (Dyn stream)
 		OutTuple{outContents = toDynamicTuple val, anchorIds = [tupleId | Dyn InTuple{tupleId} <- anchors]}
 	| otherwise = fail $ printf "No stream registered to bolt %s with name %s" boltName (streamName stream)
-  forkIO $ do
-    tuple <- readChan boltInput
-    runBoltM (executeOnTuple tuple) 
-      emit
-      ackTuple
-      failTuple
+      boltLoop s = do
+	tuple <- readChan boltInput
+	s' <- runBoltM (executeOnTuple s tuple) emit ackTuple failTuple
+	boltLoop s'
+  forkIO (boltLoop initTaskState)
   return (taskId, boltInput)
