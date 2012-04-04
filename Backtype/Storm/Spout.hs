@@ -37,5 +37,4 @@ pureSpout spoutName outStream values = do
 	    forkIO $ mapM_ (`emitFn` outStream) values >> putMVar isDone ()
 	    putMVar runningVar True
 	return isDone
-	    
   return Spout{startRunning, spoutName, spoutOutputs = [Dyn outStream]}
