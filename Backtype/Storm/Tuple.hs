@@ -12,7 +12,7 @@ data DynamicTuple =
   | DoubleCons Double DynamicTuple
   | BytesCons ByteString DynamicTuple
   | IntCons Int DynamicTuple
-  | StringCons Text DynamicTuple
+  | StringCons Text DynamicTuple deriving (Eq)
 
 instance Show DynamicTuple where
   show = show . toStrings where
